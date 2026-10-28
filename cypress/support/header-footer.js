@@ -31,22 +31,6 @@ export class HeaderPage {
   get signInButton() {
     return cy.get('[class*="header_signin"]');
   }
-
-  /*clickHome() {
-    this.homeLink.click();
-  }
-
-  clickAbout() {
-    this.aboutButton.click();
-  }
-
-  clickContacts() {
-    this.contactsButton.click();
-  }
-
-  openLoginForm() {
-    this.signInButton.click();
-  }*/
 }
 
 export class FooterPage {
