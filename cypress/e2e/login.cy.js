@@ -1,15 +1,13 @@
+import { homePage } from '../support/homePage';
 
 describe('Login', () => {
 
+    const env = Cypress.config('env') || {};
+
     beforeEach(()=> {
-        cy.visit("/", {
-            auth: {
-                username: "guest",
-                password: "welcome2qauto",
-            },
-        });
+        homePage.visit();
         cy.openLoginForm();
-    }); 
+        });
 
     context('Check Login form elements', () => {
         it('Should display the title', () => {
@@ -48,12 +46,11 @@ describe('Login', () => {
 
     context('Check user Login', () => {
         it('Should log in with valid credentials', () => {
-            const email = `fixietest14@gmail.com`;
-            const password = 'Abcdefghijk1Lmn';
-
-            cy.login(email, password);
-
-            cy.get('h1').should('have.text', 'Garage');
+            cy.env(['userEmail', 'userPassword']).then(({ userEmail, userPassword }) => {
+            cy.get('#signinEmail').type(userEmail);
+            cy.get('#signinPassword').type(userPassword, { sensitive: true });
+            cy.contains('button', 'Login').click();
+            });
         });
     });
 });

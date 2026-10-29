@@ -1,4 +1,12 @@
 {
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "cy:open:qauto1": "cypress open --config-file cypress.qauto1.config.js",
+    "cy:open:qauto2": "cypress open --config-file cypress.qauto2.config.js",
+    "cy:run:qauto1": "cypress run --config-file cypress.qauto1.config.js",
+    "cy:run:qauto2": "cypress run --config-file cypress.qauto2.config.js"
+  },
+
   "devDependencies": {
     "cypress": "^16.1.1",
     "cypress-mochawesome-reporter": "^5.0.0"
