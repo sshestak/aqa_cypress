@@ -1,7 +1,9 @@
 import { GaragePage } from '../support/garagePage';
+import { ExpensePage } from '../support/expensePage';
 
 describe('Garage page', () => {
   const garagePage = new GaragePage();
+  const expensePage = new ExpensePage();
   const auth = Cypress.config('env') || {};
 
   beforeEach(() => {
@@ -83,96 +85,90 @@ describe('Garage page', () => {
     });
   });
 
-  context('Adding car', () => {
-    let createdCarId;
-    const carId = 575625;
+    context('Car Expenses', () => {
+        const getTodayDate = () => {
+        const today = new Date();
 
-    const expenseData = {
-        reportedAt: '2026-10-28',
-        mileage: 1500,
-        liters: 40,
-        totalCost: 2400,
-    };
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const day = String(today.getDate()).padStart(2, '0');
 
-    beforeEach(() => {
-      garagePage.openAddCarModal();
-    });
+        return `${year}-${month}-${day}`;
+        };
 
-    it('should create a car and save its ID', () => {
-      const newCar = {
-        brand: 'Audi',
-        model: 'TT',
-        mileage: 1000,
-      };
+        const newCar = {
+            brand: 'Audi',
+            model: 'TT',
+            mileage: 1000,
+        };
 
-      cy.intercept('POST', '**/api/cars').as('createCar');
+        const expenseData = {
+            reportedAt: getTodayDate(),
+            mileage: 1500,
+            liters: 40,
+            totalCost: 2400,
+        };
 
-      cy.get('#addCarBrand').select(newCar.brand);
-      cy.get('#addCarModel').select(newCar.model);
-      cy.get('#addCarMileage').clear().type(String(newCar.mileage));
-      cy.contains('.modal button', 'Add').click();
+        it('Should create a car, create an expense via API and verify it in UI', () => {
+        // 1. Create car and intercept the response
+            cy.intercept('POST', '**/api/cars').as('createCar');
 
-      cy.wait('@createCar').then(({ response }) => {
-        expect(response.statusCode).to.be.oneOf([200, 201]);
-        createdCarId = response.body.data.id;
-        expect(createdCarId).to.exist;
+            garagePage.openAddCarModal();
+
+            cy.get('#addCarBrand').select(newCar.brand);
+            cy.get('#addCarModel').select(newCar.model);
+            cy.get('#addCarMileage').clear().type(String(newCar.mileage));
+
+            cy.contains('.modal button', 'Add').click();
+
+            cy.wait('@createCar').then(({ response }) => {
+            expect(response.statusCode).to.be.oneOf([200, 201]);
+
+            const carId = response.body.data.id;
+
+        expect(carId).to.exist;
+
+        // 2. Get cars and verify the created car exists in the response
+        cy.request('GET', '/api/cars').then((carsResponse) => {
+            expect(carsResponse.status).to.eq(200);
+
+            const createdCar = carsResponse.body.data.find(
+                (car) => car.id === carId
+            );
+
+            expect(createdCar).to.exist;
+            expect(createdCar).to.include({
+            id: carId,
+            brand: newCar.brand,
+            model: newCar.model,
+            mileage: newCar.mileage,
+            });
+
+        // 3. Create expense
+        cy.createExpense(carId, expenseData).then((expenseResponse) => {
+            expect(expenseResponse.status).to.be.oneOf([200, 201]);
+            expect(expenseResponse.body).to.have.property('status', 'ok');
+
+        const createdExpense = expenseResponse.body.data;
+
+            expect(createdExpense).to.include({
+                carId,
+                mileage: expenseData.mileage,
+                liters: expenseData.liters,
+                totalCost: expenseData.totalCost,
+            });
+
+            expect(createdExpense.id).to.exist;
+
+        // 4. Verify the created expense in UI
+        expensePage.visit();
+        cy.contains(String(expenseData.mileage)).should('be.visible');
+        cy.contains(String(expenseData.liters)).should('be.visible');
+        cy.contains(String(expenseData.totalCost)).should('be.visible');
+        });
       });
-
-      cy.request('GET', `${Cypress.config('baseUrl')}/api/cars`).then((response) => {
-        expect(response.status).to.eq(200);
-
-        const createdCar = response.body.data.find((item) => item.id === createdCarId);
-
-        expect(createdCar, 'created car should exist in the list').to.exist;
-        expect(createdCar.brand).to.eq(newCar.brand);
-        expect(createdCar.model).to.eq(newCar.model);
-        expect(createdCar.mileage).to.eq(newCar.mileage);
-      });
-    });
-
-  it('Should create expense and validate response', () => {
-  const newCar = {
-    brand: 'Audi',
-    model: 'TT',
-    mileage: 1000,
-  };
-
-  const expenseData = {
-    reportedAt: '2026-10-28',
-    mileage: 1500,
-    liters: 40,
-    totalCost: 2400,
-  };
-
-  cy.intercept('POST', '**/api/cars').as('createCar');
-
-  cy.get('#addCarBrand').select(newCar.brand);
-  cy.get('#addCarModel').select(newCar.model);
-  cy.get('#addCarMileage').clear().type(String(newCar.mileage));
-  cy.contains('.modal button', 'Add').click();
-
-  cy.wait('@createCar').then(({ response }) => {
-    expect(response.statusCode).to.be.oneOf([200, 201]);
-
-    const createdCarId = response.body.data.id;
-
-    cy.createExpense(createdCarId, expenseData).then((response) => {
-      expect(response.status).to.be.oneOf([200, 201]);
-      expect(response.body).to.have.property('status', 'ok');
-      expect(response.body).to.have.property('data');
-
-      const createdExpense = response.body.data;
-
-      expect(createdExpense).to.include({
-        carId: createdCarId,
-        mileage: expenseData.mileage,
-        liters: expenseData.liters,
-        totalCost: expenseData.totalCost,
-      });
-
-      expect(createdExpense).to.have.property('id');
     });
   });
 });
 });
-});
+
